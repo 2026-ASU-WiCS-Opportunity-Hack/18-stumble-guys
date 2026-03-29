@@ -9,8 +9,8 @@ import { sendPushToOrg, sendPushToUser } from '@/lib/push'
 import { z } from 'zod'
 
 const Schema = z.object({
-  org_id:  z.string().uuid().optional(),
-  user_id: z.string().uuid().optional(),
+  org_id:  z.string().uuid().nullish(),
+  user_id: z.string().uuid().nullish(),
   title:   z.string().min(1),
   body:    z.string().min(1),
   type:    z.enum(['appointment', 'follow_up']),
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json()
   const parsed = Schema.safeParse(body)
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid input', detail: parsed.error.flatten() }, { status: 400 })
 
   const { org_id, user_id, title, body: msgBody, type, id } = parsed.data
 
