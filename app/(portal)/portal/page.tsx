@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { format } from 'date-fns'
 import { Calendar, Clock, FileText, Phone, Mail, Paperclip, Download, Image } from 'lucide-react'
 import { ScheduleAppointment } from '@/components/portal/ScheduleAppointment'
+import { LocalTime } from '@/components/portal/LocalTime'
 
 const BUCKET = 'client-documents'
 
@@ -203,7 +204,7 @@ export default async function PortalPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">{appt.service_type}</p>
                   <p className="text-xs text-muted-foreground">
-                    {format(new Date(appt.scheduled_at), 'EEEE, MMMM d, yyyy · h:mm a')}
+                    <LocalTime iso={appt.scheduled_at} formatStr="datetime" />
                   </p>
                 </div>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">Scheduled</span>
