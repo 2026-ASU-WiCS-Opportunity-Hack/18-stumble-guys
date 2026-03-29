@@ -10,6 +10,7 @@ import { LanguageProvider } from '@/components/LanguageProvider'
 import { getServerT } from '@/lib/server-lang'
 import { PageVisitTracker } from '@/components/audit/PageVisitTracker'
 import { ServiceWorkerRegistrar } from '@/components/pwa/ServiceWorkerRegistrar'
+import { InstallBanner } from '@/components/pwa/InstallBanner'
 import { cn } from '@/lib/utils'
 
 const roleBadgeStyle: Record<string, string> = {
@@ -107,6 +108,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <AccessibilityWidget />
       <PageVisitTracker />
       <ServiceWorkerRegistrar />
+      <InstallBanner />
     </>
     </LanguageProvider>
   )
