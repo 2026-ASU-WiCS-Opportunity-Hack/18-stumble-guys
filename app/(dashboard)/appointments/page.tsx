@@ -10,7 +10,7 @@ import {
 import { cn } from '@/lib/utils'
 import {
   ChevronLeft, ChevronRight, Plus, X,
-  Clock, Loader2, CheckCircle2, XCircle, UserX, Bell,
+  Clock, Loader2, CheckCircle2, XCircle, UserX, Bell, CalendarClock,
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -34,7 +34,7 @@ interface Appointment {
   users: { full_name: string } | null
 }
 type View = 'month' | 'week' | 'day'
-type ModalMode = 'add' | 'view'
+type ModalMode = 'add' | 'view' | 'reschedule'
 
 // ─── Constants ────────────────────────────────────────────────────
 const HOUR_H   = 56              // px per hour in time grid
@@ -89,6 +89,10 @@ export default function AppointmentsPage() {
   const [fScheduledAt, setFScheduledAt] = useState('')
   const [fServiceType, setFServiceType] = useState('')
   const [fNotes, setFNotes]           = useState('')
+
+  // Reschedule form state
+  const [rScheduledAt, setRScheduledAt] = useState('')
+  const [rNotes, setRNotes]             = useState('')
 
   // Keyboard shortcuts: d=day, w=week, m=month
   useEffect(() => {
@@ -145,6 +149,38 @@ export default function AppointmentsPage() {
   }
 
   function closeModal() { setModalOpen(false) }
+
+  function openReschedule(a: Appointment) {
+    setRScheduledAt(toDatetimeLocal(parseISO(a.scheduled_at)))
+    setRNotes(a.notes ?? '')
+    setFormError('')
+    setModalAppt(a)
+    setModalDate(parseISO(a.scheduled_at))
+    setModalMode('reschedule')
+  }
+
+  async function handleReschedule(e: React.FormEvent) {
+    e.preventDefault()
+    if (!modalAppt || !rScheduledAt) { setFormError('Date and time are required'); return }
+    setSaving(true); setFormError('')
+    try {
+      const res = await fetch(`/api/appointments/${modalAppt.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scheduled_at: new Date(rScheduledAt).toISOString(),
+          notes: rNotes || undefined,
+          status: 'scheduled',
+        }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error ?? 'Failed')
+      await fetchAll()
+      setStatusMsg('Appointment rescheduled')
+      closeModal()
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Failed')
+    } finally { setSaving(false) }
+  }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -493,7 +529,7 @@ export default function AppointmentsPage() {
             <div className="flex items-start justify-between px-6 pt-6 pb-0">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-                  {modalMode === 'add' ? 'New Appointment' : 'Appointment Details'}
+                  {modalMode === 'add' ? 'New Appointment' : modalMode === 'reschedule' ? 'Reschedule Appointment' : 'Appointment Details'}
                 </p>
                 <p className="text-[17px] font-semibold text-zinc-900 mt-0.5">
                   {format(modalDate, 'EEEE, MMMM d')}
@@ -595,6 +631,74 @@ export default function AppointmentsPage() {
                 </form>
               )}
 
+              {/* ── RESCHEDULE FORM ──────────────────────────── */}
+              {modalMode === 'reschedule' && modalAppt && (
+                <form onSubmit={handleReschedule} className="space-y-3.5" noValidate>
+                  {/* Client reminder */}
+                  {modalAppt.clients && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-zinc-50 rounded-lg border border-zinc-100 text-[12px] text-zinc-600">
+                      <div className="h-6 w-6 rounded-full bg-zinc-200 flex items-center justify-center text-[10px] font-bold text-zinc-600 shrink-0">
+                        {modalAppt.clients.first_name[0]}{modalAppt.clients.last_name[0]}
+                      </div>
+                      {modalAppt.clients.first_name} {modalAppt.clients.last_name}
+                      {modalAppt.service_type && <span className="ml-auto text-zinc-400">{modalAppt.service_type}</span>}
+                    </div>
+                  )}
+
+                  {formError && (
+                    <p role="alert" className="text-[12px] text-red-500 bg-red-50 border border-red-100 px-3 py-2 rounded-lg">
+                      {formError}
+                    </p>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="r-time" className="text-[12px] font-medium text-zinc-600">
+                      New Date &amp; Time <span className="text-red-400">*</span>
+                    </Label>
+                    <Input
+                      id="r-time"
+                      type="datetime-local"
+                      value={rScheduledAt}
+                      onChange={e => { setRScheduledAt(e.target.value); setFormError('') }}
+                      required
+                      className="h-9 text-[13px] border-zinc-200 rounded-lg focus-visible:ring-zinc-300"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="r-notes" className="text-[12px] font-medium text-zinc-600">
+                      Notes <span className="text-zinc-400 font-normal">(optional)</span>
+                    </Label>
+                    <Textarea
+                      id="r-notes"
+                      value={rNotes}
+                      onChange={e => setRNotes(e.target.value)}
+                      placeholder="Reason for rescheduling or updated context…"
+                      rows={2}
+                      maxLength={2000}
+                      className="text-[13px] border-zinc-200 rounded-lg focus-visible:ring-zinc-300 resize-none"
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="flex-1 h-9 rounded-lg text-[13px] font-medium bg-violet-600 text-white hover:bg-violet-500 disabled:opacity-50 flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><CalendarClock className="h-3.5 w-3.5" /> Reschedule</>}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setModalMode('view')}
+                      className="h-9 px-4 rounded-lg text-[13px] font-medium text-zinc-500 border border-zinc-200 hover:bg-zinc-100 transition-colors"
+                    >
+                      Back
+                    </button>
+                  </div>
+                </form>
+              )}
+
               {/* ── VIEW DETAILS ─────────────────────────────── */}
               {modalMode === 'view' && modalAppt && (
                 <div className="space-y-4">
@@ -673,13 +777,22 @@ export default function AppointmentsPage() {
                           <XCircle className="h-3.5 w-3.5" /> Cancel
                         </button>
                       </div>
-                      <button
-                        onClick={() => sendReminder(modalAppt)}
-                        disabled={!!updatingId}
-                        className="w-full h-8 rounded-lg text-[12px] font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 flex items-center justify-center gap-1 transition-colors disabled:opacity-40"
-                      >
-                        <Bell className="h-3.5 w-3.5" /> Send Reminder
-                      </button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => openReschedule(modalAppt)}
+                          disabled={!!updatingId}
+                          className="h-8 rounded-lg text-[12px] font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 flex items-center justify-center gap-1 transition-colors disabled:opacity-40"
+                        >
+                          <CalendarClock className="h-3.5 w-3.5" /> Reschedule
+                        </button>
+                        <button
+                          onClick={() => sendReminder(modalAppt)}
+                          disabled={!!updatingId}
+                          className="h-8 rounded-lg text-[12px] font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 flex items-center justify-center gap-1 transition-colors disabled:opacity-40"
+                        >
+                          <Bell className="h-3.5 w-3.5" /> Send Reminder
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <button

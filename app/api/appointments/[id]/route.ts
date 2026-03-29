@@ -5,6 +5,7 @@ import { z } from 'zod'
 const PatchSchema = z.object({
   status: z.enum(['scheduled', 'completed', 'cancelled', 'no_show']).optional(),
   notes: z.string().max(2000).optional(),
+  scheduled_at: z.string().datetime({ offset: true }).optional(),
 })
 
 export async function PATCH(
