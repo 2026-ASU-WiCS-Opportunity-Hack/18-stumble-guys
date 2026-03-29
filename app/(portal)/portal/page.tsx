@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { format } from 'date-fns'
 import { Calendar, Clock, FileText, Phone, Mail, Paperclip, Download, Image } from 'lucide-react'
+import { ScheduleAppointment } from '@/components/portal/ScheduleAppointment'
 
 const BUCKET = 'client-documents'
 
@@ -39,14 +40,25 @@ export default async function PortalPage() {
     )
   }
 
-  // Fetch client profile
+  // Fetch client profile (including created_by for scheduling)
   const { data: client } = await supabase
     .from('clients')
-    .select('*')
+    .select('*, created_by')
     .eq('id', userData.client_id)
     .single()
 
   if (!client) redirect('/login')
+
+  // Fetch onboarding staff name for appointment scheduling
+  let onboardingStaffName: string | null = null
+  if (client.created_by) {
+    const { data: staffData } = await supabase
+      .from('users')
+      .select('full_name')
+      .eq('id', client.created_by)
+      .single()
+    onboardingStaffName = staffData?.full_name ?? null
+  }
 
   // Fetch service history
   const { data: services } = await supabase
@@ -169,6 +181,9 @@ export default async function PortalPage() {
           </ul>
         </div>
       )}
+
+      {/* Schedule an appointment */}
+      <ScheduleAppointment staffName={onboardingStaffName} />
 
       {/* Upcoming appointments */}
       {(appointments?.length ?? 0) > 0 && (
