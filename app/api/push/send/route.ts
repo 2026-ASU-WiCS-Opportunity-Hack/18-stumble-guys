@@ -9,12 +9,12 @@ import { sendPushToOrg, sendPushToUser } from '@/lib/push'
 import { z } from 'zod'
 
 const Schema = z.object({
-  org_id:  z.string().uuid().nullish(),
-  user_id: z.string().uuid().nullish(),
+  org_id:  z.string().min(1).nullish(),
+  user_id: z.string().min(1).nullish(),
   title:   z.string().min(1),
   body:    z.string().min(1),
   type:    z.enum(['appointment', 'follow_up']),
-  id:      z.string().uuid(),
+  id:      z.string().min(1),
 })
 
 export async function POST(request: NextRequest) {
