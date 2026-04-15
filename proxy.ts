@@ -30,14 +30,14 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // Protect all dashboard and API routes
+  // Protect all dashboard and API routes (exclude public API endpoints)
   const isProtected =
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/clients') ||
     pathname.startsWith('/appointments') ||
     pathname.startsWith('/reports') ||
     pathname.startsWith('/admin') ||
-    pathname.startsWith('/api/')
+    (pathname.startsWith('/api/') && pathname !== '/api/docs')
 
   if (isProtected && !user) {
     const loginUrl = request.nextUrl.clone()
